@@ -27,19 +27,16 @@ class surface():
 		self.rij[self.rij<1e-20]=float('nan')
 		self.rij_2 = self.rij**2
 		self.r_rep = np.transpose(np.tile(self.r,(len(self.x),1)))
-		
 
 	def solveNormalContact(self,indentations,convergence_criterion = 1e-12,lambda_0 = 1):
 		eps = 1.0e-20
 
 		#Initial guess for a initial indentation (overlap area)
 		z = np.asarray(self.h+indentations[0])
-		
 		a = (self.r*z)**.5
 		a[np.isnan(a)]=0
 		u = a**2/self.r
 		
-
 		for delta in indentations:
 			z = self.h+delta
 			rms_error = 1
@@ -49,12 +46,10 @@ class surface():
 
 			while rms_error>convergence_criterion:
 				a_rep = np.transpose(np.tile(a, (len(self.x),1)))
-				tmp_mat = np.zeros(np.size(a_rep))
-				tmp_mat = (2*a_rep**2-self.rij_2)/(self.r_rep)*np.arcsin(a_rep/self.rij) + a_rep/self.r_rep*(self.rij_2 - a_rep**2)**.5
-				#tmp_mat = a_rep/self.r_rep*(self.rij_2 - a_rep**2)**.5
-				tmp_mat[np.isnan(tmp_mat)]=0
-				
-				u = a**2/self.r + 1/np.pi*np.sum(tmp_mat,axis=0)
+				interaction_matrix = np.zeros(np.size(a_rep))
+				interaction_matrix = (2*a_rep**2-self.rij_2)/(self.r_rep)*np.arcsin(a_rep/self.rij) + a_rep/self.r_rep*(self.rij_2 - a_rep**2)**.5 # Set up all interactions in matrix form
+				interaction_matrix[np.isnan(interaction_matrix)]=0
+				u = a**2/self.r + 1/np.pi*np.sum(interaction_matrix,axis=0)
 				
 				u_all.append(u)
 
@@ -67,7 +62,6 @@ class surface():
 				rms_error = np.mean(delta_a**2/self.r**2)**.5
 				
 				# Set step length adaptively (max displacement 1% of area change):
-
 				if sum(a>0)>0:
 					if np.max(np.abs(delta_a[a>0]/self.r[a>0]))>.01:
 						steplength = lambda_mod*lambda_0*.01/np.max(abs(delta_a[a>0]/self.r[a>0]))
@@ -90,7 +84,6 @@ class surface():
 
 				counter = counter + 1
 
-
 				if (counter%100)==0: # Reduce step length if convergence problems are detected
 					lambda_mod = lambda_mod/2
 
@@ -101,9 +94,6 @@ class surface():
 			self.indentations.append(delta)
 			self.contact_area.append(np.sum(self.Ai[-1]))
 			self.normal_force.append(np.sum(self.fi[-1]))
-
-			tmp = a_rep/self.rij
-			tmp[np.isnan(tmp)]=0
 			
 			
         
